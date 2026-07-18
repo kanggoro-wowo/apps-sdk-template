@@ -136,3 +136,20 @@ registerTool({
     isError: false
   };
 })
+
+.registerTool({
+  name: "export-report",
+  description: "Ekspor laporan analisis dalam format PDF/Excel/CSV",
+  inputSchema: {
+    format: z.enum(["pdf", "excel", "csv"]),
+    correlationId: z.string().describe("ID hasil analisis dari run-correlation-analysis")
+  }
+}, async ({ format, correlationId }) => {
+  const result = await getCorrelationResult(correlationId);
+  const file = await generateExport(result, format);
+  return {
+    structuredContent: { downloadUrl: file.url, format },
+    content: [{ type: "text", text: `Laporan ${format} siap diunduh: ${file.url}` }],
+    isError: false
+  };
+})
