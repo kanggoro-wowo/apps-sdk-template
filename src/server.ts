@@ -92,3 +92,47 @@ const server = new McpServer(
 export default await server.run();
 
 export type AppType = typeof server;
+
+registerTool({
+  name: "run-correlation-analysis",
+  description: "Menjalankan analisis korelasi antar metrik ritel (penjualan, traffic, konversi, etc.)",
+  inputSchema: {
+    dateRange: z.object({
+      start: z.string().describe("YYYY-MM-DD"),
+      end: z.string().describe("YYYY-MM-DD")
+    }),
+    metrics: z.array(z.enum(["sales", "traffic", "conversion", "aov", "cart_abandon"])),
+    segment: z.enum(["all", "by_category", "by_region", "by_device"]).optional(),
+    correlationMethod: z.enum(["pearson", "spearman"]).default("pearson")
+  },
+  annotations: {
+    title: "Analisis Korelasi Ritel",
+    readOnlyHint: false,
+    destructiveHint: false,
+    openWorldHint: true
+  },
+  view: {
+    component: "correlation-dashboard",
+    domain: "https://your-app.alpic.live",
+    description: "Dashboard korelasi ritel real-time"
+  }
+}, async ({ dateRange, metrics, segment, correlationMethod }) => {
+  // 1. Fetch data dari source (CSV/DB/API)
+  const rawData = await fetchRetailData(dateRange, metrics, segment);
+  
+  // 2. Hitung korelasi
+  const correlationMatrix = computeCorrelation(rawData, correlationMethod);
+  
+  // 3. Deteksi anomali (korelasi > 0.8 atau < -0.8)
+  const insights = generateInsights(correlationMatrix);
+  
+  return {
+    structuredContent: {
+      matrix: correlationMatrix,
+      insights,
+      summary: `Ditemukan ${insights.length} korelasi kuat dalam periode ${dateRange.start} s.d ${dateRange.end}`
+    },
+    content: [{ type: "text", text: JSON.stringify({ correlationMatrix, insights }, null, 2) }],
+    isError: false
+  };
+})
