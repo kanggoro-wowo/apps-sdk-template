@@ -14,7 +14,7 @@ export default function CorrelationDashboard() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold">📊 Retail Correlation Finder</h1>
+      <h1 className="text-2xl font-bold"> Retail Correlation Finder</h1>
       {/* Filter controls */}
       <div className="grid grid-cols-3 gap-4 my-4">
         <input type="date" value={dateRange.start} onChange={...} />
@@ -28,7 +28,7 @@ export default function CorrelationDashboard() {
         </select>
       </div>
       <button onClick={runAnalysis} disabled={isInvoking}>
-        {isInvoking ? "⏳ Menganalisis..." : "🔍 Jalankan Analisis"}
+        {isInvoking ? " Menganalisis..." : " Jalankan Analisis"}
       </button>
       {/* Heatmap korelasi */}
       {result && <CorrelationHeatmap matrix={result.matrix} insights={result.insights} />}
