@@ -1,0 +1,78 @@
+// src/agents/orchestrator.ts
+import { z } from "zod";
+
+interface AIResponse {
+  source: string;
+  insights: string[];
+  recommendations: string[];
+  confidence: number;
+}
+
+export class CorrelationOrchestrator {
+  private geminiKey: string;
+
+  constructor() {
+    this.geminiKey = process.env.GEMINI_API_KEY || "";
+    if (!this.geminiKey) {
+      console.warn("GEMINI_API_KEY tidak ditemukan. Build tetap lanjut dengan fallback.");
+    }
+  }
+
+  private async callGemini(data: any): Promise<AIResponse> {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.geminiKey}`;
+    
+    const prompt = `Anda adalah analis data ritel. Data: ${JSON.stringify(data)}. 
+    Balas HANYA dalam format JSON valid: { "insights": ["insight1"], "recommendations": ["rekomendasi1"], "confidence": 0.9 }`;
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.2 }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      const cleanText = text.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(cleanText);
+      
+      return {
+        source: "gemini",
+        insights: parsed.insights || ["Tidak ada insight ditemukan."],
+        recommendations: parsed.recommendations || ["Tidak ada rekomendasi."],
+        confidence: parsed.confidence || 0.7
+      };
+    } catch (error) {
+      console.error("Gemini call failed:", error);
+      // FALLBACK KRITIS: Memastikan build tetap sukses meskipun API error
+      return {
+        source: "gemini_fallback",
+        insights: ["[Fallback] Periksa API Key atau koneksi."],
+        recommendations: ["Gunakan data mentah untuk analisis manual."],
+        confidence: 0.1
+      };
+    }
+  }
+
+  async aggregateAnalysis(data: any): Promise<{
+    consensus: string[];
+    conflicts: string[];
+    finalRecommendation: string;
+  }> {
+    // Panggil Gemini (multi-AI bisa ditambahkan nanti dengan pattern sama)
+    const geminiResult = await this.callGemini(data);
+
+    return {
+      consensus: geminiResult.insights,
+      conflicts: [],
+      finalRecommendation: geminiResult.recommendations[0] || "Tidak ada rekomendasi."
+    };
+  }
+}
